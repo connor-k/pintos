@@ -1,0 +1,8 @@
+# Generated files
+*~
+*.o
+build/*
+boch*.txt
+
+# OS X
+*.DS_Store
