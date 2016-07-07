@@ -141,4 +141,9 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+/* Returns true if the lhs thread's priority is less than rhs */
+bool
+comp_pri_less (const struct list_elem* lhs, const struct list_elem* rhs,
+    void* aux UNUSED);
+
 #endif /* threads/thread.h */

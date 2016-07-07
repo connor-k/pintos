@@ -80,10 +80,6 @@ static tid_t allocate_tid (void);
 static bool comp_sleep_less (const struct list_elem* lhs,
     const struct list_elem* rhs, void* aux UNUSED);
 
-/* Returns true if the lhs thread's priority is less than rhs */
-static bool comp_ready_less (const struct list_elem* lhs,
-    const struct list_elem* rhs, void* aux UNUSED);
-
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -223,6 +219,12 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* Yield if higher priority thread in ready list */
+  if (t->priority >= running_thread ()->priority)
+  {
+    thread_yield ();
+  }
+
   return tid;
 }
 
@@ -259,7 +261,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_insert_ordered (&ready_list, &t->elem, comp_ready_less, NULL);
+  list_insert_ordered (&ready_list, &t->elem, comp_pri_less, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -330,7 +332,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_insert_ordered (&ready_list, &cur->elem, comp_ready_less, NULL);
+    list_insert_ordered (&ready_list, &cur->elem, comp_pri_less, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -380,6 +382,12 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  /* Yield if no longer highest priority */
+  if (!list_empty (&ready_list) && new_priority <= list_entry (list_begin (
+      &ready_list), struct thread, elem)->priority)
+  {
+    thread_yield ();
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -601,7 +609,7 @@ schedule (void)
     if (top->sleep_end_ticks <= timer_ticks ())
     {
       list_pop_front (&sleep_list);
-      list_insert_ordered (&ready_list, &top->elem, comp_ready_less, NULL);
+      list_insert_ordered (&ready_list, &top->elem, comp_pri_less, NULL);
       top->status = THREAD_READY;
     }
     else
@@ -649,8 +657,8 @@ comp_sleep_less (const struct list_elem* lhs, const struct list_elem* rhs,
   return t_lhs->sleep_end_ticks < t_rhs->sleep_end_ticks;
 }
 
-static bool
-comp_ready_less (const struct list_elem* lhs, const struct list_elem* rhs,
+bool
+comp_pri_less (const struct list_elem* lhs, const struct list_elem* rhs,
     void* aux UNUSED)
 {
   struct thread *t_lhs = list_entry (lhs, struct thread, elem);
