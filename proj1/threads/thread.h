@@ -25,6 +25,11 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* Niceness constants */
+#define NICE_DEFAULT 0
+#define NICE_MAX 20
+#define NICE_MIN -20
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -89,6 +94,8 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+    int niceness;                       /* Niceness. */
+    int64_t recent_cpu;                 /* Recent CPU calculation. A real number */
     int64_t sleep_end_ticks;            /* Time to wake up if sleeping */
     struct list_elem allelem;           /* List element for all threads list. */
 
